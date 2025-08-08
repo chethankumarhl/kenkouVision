@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PatientStatus {
+  ACTIVE
+  CRITICAL
+  STABLE
+  DISCHARGED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  password    String
+  role        Role     @default(DOCTOR)
+  avatar      String?
+  department  String?
+  phone       String?
+  isActive    Boolean  @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  patients     Patient[]
+  appointments Appointment[]
+  aiAnalyses   AiAnalysis[]  // ✅ Single definition, correct type
+  
+  @@map("users")
+}
+
+model Patient {
+  id                 String        @id @default(cuid())
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String
+  dateOfBirth        DateTime
+  gender             Gender
+  address            String?
+  emergencyContact   String?
+  bloodType          String?
+  allergies          String[]
+  status             PatientStatus @default(ACTIVE)
+  avatar             String?
+  medicalHistory     String?
+  currentMedications String[]
+  chronicConditions  String[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  doctorId     String
+  
+  doctor         User           @relation(fields: [doctorId], references: [id])
+  appointments   Appointment[]
+  medicalRecords MedicalRecord[]
+  aiAnalyses     AiAnalysis[]   // ✅ Single definition, correct type
+  
+  @@map("patients")
+}
+
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  diagnosis   String
+  treatment   String?
+  notes       String?
+  symptoms    String[]
+  vitals      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  patientId   String
+  patient     Patient @relation(fields: [patientId], references: [id])
+  
+  @@map("medical_records")
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("SCHEDULED")
+  type        String?
+  
+  patientId   String
+  doctorId    String
+  
+  patient     Patient @relation(fields: [patientId], references: [id])
+  doctor      User    @relation(fields: [doctorId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("appointments")
+}
+
+model AiAnalysis {
+  id         String   @id @default(cuid())
+  type       String   // "SYMPTOM_CHECK", "DOCUMENT_ANALYSIS", etc.
+  input      Json     // The input data (symptoms, document text, etc.)
+  output     Json     // The AI analysis result
+  confidence Float?   // Confidence level from AI
+  patientId  String?  // Optional patient association
+  patient    Patient? @relation(fields: [patientId], references: [id])
+  userId     String   // User who ran the analysis
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("ai_analyses")
+}
