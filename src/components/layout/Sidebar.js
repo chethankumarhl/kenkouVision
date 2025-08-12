@@ -16,6 +16,8 @@ import {
   MessageSquare,
   Pill,
   Activity,
+  hospital,
+  Hospital,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -40,7 +42,7 @@ const navigation = [
     href: "/ai-tools",
     icon: Brain,
     children: [
-      { name: "Symptom Checker", href: "/ai-tools/symptom-checker", icon: Stethoscope },
+      { name: "Symptom Checker", href: "/ai-tools/symptom-checker", icon: Hospital },
       { name: "Document Analyzer", href: "/ai-tools/document-analyzer", icon: FileText },
       { name: "Radiology Report", href: "/ai-tools/radiology-report", icon: Activity },
       { name: "Medication Info", href: "/ai-tools/medication-info", icon: Pill },
@@ -64,8 +66,8 @@ export default function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200 px-3 py-4">
       <div className="flex items-center px-4 py-2 mb-8">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <Stethoscope className="h-7 w-10 text-white" />
+        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+          <Hospital className="h-7 w-10 text-white" />
         </div>
         <span className="ml-3 text-xl font-bold text-gray-900">Kenkou-Vision 健康-視覚</span>
       </div>

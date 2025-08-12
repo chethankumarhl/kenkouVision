@@ -12,13 +12,10 @@ export const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("Missing credentials");
         }
 
         try {
-          // Ensure database connection
-          await prisma.$connect();
-          
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email
@@ -26,8 +23,7 @@ export const authOptions = {
           });
 
           if (!user) {
-            console.log("User not found:", credentials.email);
-            return null;
+            throw new Error("No user found with this email");
           }
 
           const isPasswordValid = await bcrypt.compare(
@@ -36,9 +32,14 @@ export const authOptions = {
           );
 
           if (!isPasswordValid) {
-            console.log("Invalid password for user:", credentials.email);
-            return null;
+            throw new Error("Invalid password");
           }
+
+          // Update last login
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() }
+          });
 
           return {
             id: user.id,
@@ -49,15 +50,14 @@ export const authOptions = {
           };
         } catch (error) {
           console.error("Auth error:", error);
-          return null;
-        } finally {
-          await prisma.$disconnect();
+          throw new Error("Authentication failed");
         }
       }
     })
   ],
   session: {
     strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -78,6 +78,8 @@ export const authOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login", // Add error page
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
 };
