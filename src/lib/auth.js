@@ -11,22 +11,14 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log("🔍 Authorize function called with:", { 
-          email: credentials?.email,
-          hasPassword: !!credentials?.password 
-        });
-
         if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Missing credentials");
-          throw new Error("Missing email or password");
+          console.log("Missing credentials");
+          return null;
         }
 
         try {
-          console.log("🔗 Attempting database connection...");
-          
           // Test database connection first
           await prisma.$connect();
-          console.log("✅ Database connected successfully");
           
           const user = await prisma.user.findUnique({
             where: {
@@ -34,32 +26,25 @@ export const authOptions = {
             }
           });
 
-          console.log("👤 User lookup result:", { 
-            found: !!user, 
-            email: credentials.email,
-            userId: user?.id 
-          });
-
           if (!user) {
-            console.log("❌ No user found with email:", credentials.email);
-            throw new Error("Invalid credentials");
+            console.log("User not found:", credentials.email);
+            await prisma.$disconnect();
+            return null;
           }
 
-          console.log("🔐 Comparing passwords...");
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
           );
 
-          console.log("🔐 Password validation result:", isPasswordValid);
-
           if (!isPasswordValid) {
-            console.log("❌ Invalid password for user:", credentials.email);
-            throw new Error("Invalid credentials");
+            console.log("Invalid password for user:", credentials.email);
+            await prisma.$disconnect();
+            return null;
           }
 
-          console.log("✅ Authentication successful for:", credentials.email);
-          
+          await prisma.$disconnect();
+
           return {
             id: user.id,
             email: user.email,
@@ -68,28 +53,18 @@ export const authOptions = {
             department: user.department,
           };
         } catch (error) {
-          console.error("💥 Auth error details:", {
-            message: error.message,
-            code: error.code,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-          });
-          
-          // Don't throw the original error, throw a generic one for security
-          throw new Error("Authentication failed");
-        } finally {
+          console.error("Auth error:", error);
           await prisma.$disconnect();
-          console.log("🔌 Database disconnected");
+          return null; // Don't throw here, return null instead
         }
       }
     })
   ],
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
     async jwt({ token, user }) {
-      console.log("🎫 JWT callback:", { hasUser: !!user, tokenSub: token.sub });
       if (user) {
         token.role = user.role;
         token.department = user.department;
@@ -97,7 +72,6 @@ export const authOptions = {
       return token;
     },
     async session({ session, token }) {
-      console.log("📋 Session callback:", { tokenSub: token.sub });
       if (token) {
         session.user.id = token.sub;
         session.user.role = token.role;
@@ -108,19 +82,8 @@ export const authOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login",
+    error: "/login", // Redirect errors to login page
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
-  logger: {
-    error(code, metadata) {
-      console.error("🚨 NextAuth Error:", code, metadata);
-    },
-    warn(code) {
-      console.warn("⚠️ NextAuth Warning:", code);
-    },
-    debug(code, metadata) {
-      console.log("🔍 NextAuth Debug:", code, metadata);
-    }
-  },
+  debug: process.env.NODE_ENV === 'development',
 };
